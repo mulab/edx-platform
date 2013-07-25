@@ -537,11 +537,14 @@ class XModuleDescriptor(XModuleFields, HTMLSnippet, ResourceTemplates, XBlock):
 
         system: Module system
         """
-        return self.module_class(
+        # save any field changes
+        module = self.module_class(
             system,
             self,
             system.xblock_model_data(self),
         )
+        module.save()
+        return module
 
     def has_dynamic_children(self):
         """
@@ -614,6 +617,8 @@ class XModuleDescriptor(XModuleFields, HTMLSnippet, ResourceTemplates, XBlock):
         new_block = system.xblock_from_json(cls, usage_id, json_data)
         if parent_xblock is not None:
             parent_xblock.children.append(new_block)
+        # decache any pending field settings
+        new_block.save()
         return new_block
 
     @classmethod

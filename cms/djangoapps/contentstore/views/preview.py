@@ -43,6 +43,8 @@ def preview_dispatch(request, preview_id, location, dispatch=None):
     """
 
     descriptor = modulestore().get_item(location)
+    # decache any pending field settings -- this one may be overkill
+    descriptor.save()
     instance = load_preview_module(request, preview_id, descriptor)
     # Let the module handle the AJAX
     try:
