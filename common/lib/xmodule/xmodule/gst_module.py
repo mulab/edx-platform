@@ -9,17 +9,16 @@ from lxml import etree
 from lxml import html
 import xmltodict
 
-from xmodule.mako_module import MakoModuleDescriptor
+from xmodule.editing_module import XMLEditingDescriptor
 from xmodule.xml_module import XmlDescriptor
 from xmodule.x_module import XModule
 from xmodule.stringify import stringify_children
 from pkg_resources import resource_string
 from xblock.core import String, Scope
 
-
 log = logging.getLogger(__name__)
 
-DEFAULT_RENDER="""
+DEFAULT_RENDER = """
     <h2>Graphic slider tool: Dynamic range and implicit functions.</h2>
 
     <p>You can make the range of the x axis (but not ticks of x axis) of
@@ -33,13 +32,19 @@ DEFAULT_RENDER="""
    </div>
     <plot style="margin-top:15px;margin-bottom:15px;"/>
 """
-DEFAULT_CONFIGURATION="""
+
+DEFAULT_CONFIGURATION = """
     <parameters>
         <param var="r" min="5" max="25" step="0.5" initial="12.5" />
     </parameters>
     <functions>
       <function color="red">Math.sqrt(r * r - x * x)</function>
       <function color="red">-Math.sqrt(r * r - x * x)</function>
+      <function color="red">Math.sqrt(r * r / 20 - Math.pow(x-r/2.5, 2)) + r/8</function>
+      <function color="red">-Math.sqrt(r * r / 20 - Math.pow(x-r/2.5, 2)) + r/5.5</function>
+      <function color="red">Math.sqrt(r * r / 20 - Math.pow(x+r/2.5, 2)) + r/8</function>
+      <function color="red">-Math.sqrt(r * r / 20 - Math.pow(x+r/2.5, 2)) + r/5.5</function>
+      <function color="red">-Math.sqrt(r * r / 5 - x * x) - r/5.5</function>
     </functions>
     <plot>
       <xrange>
@@ -54,15 +59,19 @@ DEFAULT_CONFIGURATION="""
 """
 
 
-
 class GraphicalSliderToolFields(object):
-    render = String(scope=Scope.content, default=DEFAULT_RENDER)
-    configuration = String(scope=Scope.content, default=DEFAULT_CONFIGURATION)
+    data = String(
+        help="Html contents to display for this module",
+        default='<render>{}</render><configuration>{}</configuration>'.format(
+            DEFAULT_RENDER, DEFAULT_CONFIGURATION),
+        scope=Scope.content
+    )
 
 
 class GraphicalSliderToolModule(GraphicalSliderToolFields, XModule):
     ''' Graphical-Slider-Tool Module
     '''
+
 
     js = {
       'coffee': [resource_string(__name__, 'js/src/javascript_loader.coffee')],
@@ -82,6 +91,7 @@ class GraphicalSliderToolModule(GraphicalSliderToolFields, XModule):
 
       ]
     }
+    css = {'scss': [resource_string(__name__, 'css/gst/display.scss')]}
     js_module_name = "GraphicalSliderTool"
 
     def get_html(self):
@@ -90,15 +100,23 @@ class GraphicalSliderToolModule(GraphicalSliderToolFields, XModule):
         # these 3 will be used in class methods
         self.html_id = self.location.html_id()
         self.html_class = self.location.category
+
+        self.configuration = html.fromstring(self.data).xpath('configuration')[0]
+        self.configuration = stringify_children(self.configuration)
+
+        self.render = html.fromstring(self.data).xpath('render')[0]
+        self.render = stringify_children(self.render)
+
         self.configuration_json = self.build_configuration_json()
         params = {
-                  'gst_html': self.substitute_controls(self.render),
-                  'element_id': self.html_id,
-                  'element_class': self.html_class,
-                  'configuration_json': self.configuration_json
-                  }
+            'gst_html': self.substitute_controls(self.render),
+            'element_id': self.html_id,
+            'element_class': self.html_class,
+            'configuration_json': self.configuration_json
+        }
         content = self.system.render_template(
-                        'graphical_slider_tool.html', params)
+            'graphical_slider_tool.html', params
+        )
         return content
 
     def substitute_controls(self, html_string):
@@ -174,7 +192,7 @@ class GraphicalSliderToolModule(GraphicalSliderToolFields, XModule):
                 '">' + self.configuration + '</root>'))
 
 
-class GraphicalSliderToolDescriptor(GraphicalSliderToolFields, MakoModuleDescriptor, XmlDescriptor):
+class GraphicalSliderToolDescriptor(GraphicalSliderToolFields, XMLEditingDescriptor, XmlDescriptor):
     module_class = GraphicalSliderToolModule
 
     @classmethod
