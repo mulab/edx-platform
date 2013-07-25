@@ -821,7 +821,7 @@ class NumericalResponse(LoncapaResponse):
 
     response_tag = 'numericalresponse'
     hint_tag = 'numericalhint'
-    allowed_inputfields = ['textline']
+    allowed_inputfields = ['textline', 'formulaequationinput']
     required_attributes = ['answer']
     max_inputfields = 1
 
